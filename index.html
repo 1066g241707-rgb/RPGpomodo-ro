@@ -1,0 +1,981 @@
+<!DOCTYPE HTML>
+<html lang="ja">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>ポモドーロタイマー RPG Edition EX</title>
+    <style>
+        :root {
+            --bg-color: #f8fafc;
+            --card-bg: #ffffff;
+            --text-main: #0f172a;
+            --text-sub: #64748b;
+            --accent-color: #3b82f6;
+            --accent-hover: #2563eb;
+            --ring-bg: #e2e8f0;
+            --border-color: #e2e8f0;
+            --shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.08), 0 8px 10px -6px rgba(15, 23, 42, 0.04);
+        }
+
+        /* テーマスキン */
+        body.theme-fire { --accent-color: #ef4444; --accent-hover: #dc2626; }
+        body.theme-forest { --accent-color: #10b981; --accent-hover: #059669; }
+        body.theme-gold { --accent-color: #f59e0b; --accent-hover: #d97706; }
+        body.theme-dark { --bg-color: #0f172a; --card-bg: #1e293b; --text-main: #f8fafc; --text-sub: #94a3b8; --border-color: #334155; --ring-bg: #334155; }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        .timer-card {
+            background: var(--card-bg);
+            width: 100%;
+            max-width: 440px;
+            border-radius: 24px;
+            padding: 28px 24px;
+            box-shadow: var(--shadow);
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* ヘッダー */
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+
+        .status-badge, .streak-badge, .gold-badge {
+            font-size: 0.8rem;
+            font-weight: 700;
+            padding: 4px 10px;
+            border-radius: 12px;
+        }
+
+        .status-badge { background: #e0f2fe; color: #0284c7; }
+        .streak-badge { background: #fff7ed; color: #ea580c; border: 1px solid #ffedd5; }
+        .gold-badge { background: #fefce8; color: #ca8a04; border: 1px solid #fef08a; }
+
+        .icon-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-sub);
+            font-size: 1.2rem;
+            cursor: pointer;
+            padding: 4px 8px;
+            border-radius: 8px;
+            transition: all 0.2s;
+        }
+
+        .icon-btn:hover {
+            background: rgba(0,0,0,0.05);
+            color: var(--text-main);
+        }
+
+        /* RPGステータス */
+        .rpg-status-bar {
+            background: rgba(0,0,0,0.02);
+            border: 1px solid var(--border-color);
+            border-radius: 14px;
+            padding: 10px 14px;
+            margin-bottom: 16px;
+            text-align: left;
+        }
+
+        .rpg-info-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.8rem;
+            font-weight: 700;
+            color: var(--text-main);
+            margin-bottom: 6px;
+        }
+
+        .bar-bg {
+            background: var(--ring-bg);
+            height: 8px;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-bottom: 4px;
+        }
+
+        .exp-bar-fill {
+            background: linear-gradient(90deg, #3b82f6, #8b5cf6);
+            height: 100%;
+            width: 0%;
+            transition: width 0.4s ease;
+        }
+
+        .hp-bar-fill {
+            background: linear-gradient(90deg, #ef4444, #f97316);
+            height: 100%;
+            width: 100%;
+            transition: width 0.3s ease;
+        }
+
+        /* モード切替 */
+        .mode-tabs {
+            display: flex;
+            background: rgba(0,0,0,0.05);
+            padding: 4px;
+            border-radius: 14px;
+            margin-bottom: 16px;
+            gap: 4px;
+        }
+
+        .tab-btn {
+            flex: 1;
+            border: none;
+            background: transparent;
+            color: var(--text-sub);
+            padding: 8px 0;
+            font-size: 0.85rem;
+            font-weight: 600;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .tab-btn.active {
+            background: var(--card-bg);
+            color: var(--text-main);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+
+        /* 円形タイマー */
+        .ring-wrapper {
+            position: relative;
+            width: 220px;
+            height: 220px;
+            margin: 0 auto 12px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .ring-svg {
+            width: 100%;
+            height: 100%;
+            transform: rotate(-90deg);
+        }
+
+        .ring-bg {
+            fill: none;
+            stroke: var(--ring-bg);
+            stroke-width: 8;
+        }
+
+        .ring-progress {
+            fill: none;
+            stroke: var(--accent-color);
+            stroke-width: 8;
+            stroke-linecap: round;
+            stroke-dasharray: 660;
+            stroke-dashoffset: 0;
+            transition: stroke-dashoffset 0.3s ease, stroke 0.3s ease;
+        }
+
+        .timer-center {
+            position: absolute;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .timer-text {
+            font-size: 3.4rem;
+            font-weight: 700;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+            color: var(--text-main);
+            letter-spacing: -0.03em;
+            line-height: 1;
+            margin-bottom: 6px;
+        }
+
+        .cycle-text {
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--text-sub);
+        }
+
+        /* 微調整ボタン */
+        .adjust-controls {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+
+        .btn-adjust {
+            background: rgba(0,0,0,0.02);
+            border: 1px solid var(--border-color);
+            color: var(--text-sub);
+            padding: 6px 12px;
+            border-radius: 8px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-adjust:hover {
+            background: rgba(0,0,0,0.05);
+            color: var(--text-main);
+        }
+
+        /* メインボタン */
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 16px;
+        }
+
+        .btn {
+            border: none;
+            border-radius: 12px;
+            padding: 14px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .btn-primary {
+            flex: 2;
+            background: var(--accent-color);
+            color: #ffffff;
+        }
+
+        .btn-primary:hover { background: var(--accent-hover); }
+        .btn-primary.running { background: #ef4444; }
+        .btn-primary.running:hover { background: #dc2626; }
+
+        .btn-secondary {
+            flex: 1;
+            background: rgba(0,0,0,0.05);
+            color: var(--text-sub);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(0,0,0,0.1);
+            color: var(--text-main);
+        }
+
+        /* エクストラセクション */
+        .rpg-extra-section {
+            margin-top: 14px;
+            padding-top: 14px;
+            border-top: 1px dashed var(--border-color);
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .battle-log {
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--text-sub);
+            background: rgba(0,0,0,0.02);
+            padding: 8px 12px;
+            border-radius: 10px;
+            min-height: 42px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid var(--border-color);
+        }
+
+        .rpg-actions {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .btn-action-sub {
+            background: #fef3c7;
+            color: #92400e;
+            border: 1px solid #fde68a;
+            padding: 6px 10px;
+            border-radius: 8px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        .sound-selector select {
+            border: 1px solid var(--border-color);
+            background: var(--card-bg);
+            color: var(--text-main);
+            padding: 4px 6px;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            cursor: pointer;
+        }
+
+        /* パネル（モーダル） */
+        .panel-modal {
+            display: none;
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 24px;
+            box-sizing: border-box;
+            z-index: 10;
+            text-align: left;
+            flex-direction: column;
+            justify-content: space-between;
+            overflow-y: auto;
+        }
+
+        .panel-modal.active { display: flex; }
+
+        .panel-title {
+            font-size: 1.1rem;
+            font-weight: 700;
+            margin-bottom: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .item-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-bottom: 16px;
+        }
+
+        .shop-item, .achievement-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 12px;
+            background: rgba(0,0,0,0.02);
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+        }
+
+        .item-info div:first-child { font-weight: 700; font-size: 0.85rem; }
+        .item-info div:last-child { font-size: 0.75rem; color: var(--text-sub); }
+
+        .setting-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .setting-item label { font-size: 0.85rem; font-weight: 600; color: var(--text-sub); }
+        .setting-item input[type="number"] {
+            width: 60px;
+            padding: 4px 6px;
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+            text-align: center;
+            background: var(--card-bg);
+            color: var(--text-main);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="timer-card">
+        <!-- ヘッダー -->
+        <div class="card-header">
+            <div class="header-left">
+                <span id="statusBadge" class="status-badge">作業</span>
+                <span id="streakBadge" class="streak-badge" title="連勝数">🔥 0</span>
+                <span id="goldBadge" class="gold-badge" title="所持ゴールド">💰 0G</span>
+            </div>
+            <div>
+                <button class="icon-btn" onclick="togglePanel('trophyPanel')" title="実績">🏆</button>
+                <button class="icon-btn" onclick="togglePanel('settingsPanel')" title="設定">⚙️</button>
+            </div>
+        </div>
+
+        <!-- RPGステータスバー -->
+        <div class="rpg-status-bar">
+            <div class="rpg-info-row">
+                <span id="heroTitle">⚔️ Lv.1 見習い冒険者</span>
+                <span id="dungeonFloor">🏰 集中ダンジョン 1F</span>
+            </div>
+            <div style="font-size:0.7rem; color:var(--text-sub); margin-bottom:2px;">EXP</div>
+            <div class="bar-bg">
+                <div id="expFill" class="exp-bar-fill"></div>
+            </div>
+            <div id="enemyHpContainer" style="display:none; margin-top:6px;">
+                <div style="display:flex; justify-content:space-between; font-size:0.7rem; color:var(--text-sub); margin-bottom:2px;">
+                    <span id="enemyName">敵のHP</span>
+                    <span id="enemyHpText">100/100</span>
+                </div>
+                <div class="bar-bg">
+                    <div id="hpFill" class="hp-bar-fill"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- モード切替 -->
+        <div class="mode-tabs">
+            <button id="tab-work" class="tab-btn active" onclick="switchMode('work')">作業</button>
+            <button id="tab-short" class="tab-btn" onclick="switchMode('shortBreak')">短休憩</button>
+            <button id="tab-long" class="tab-btn" onclick="switchMode('longBreak')">長休憩</button>
+        </div>
+
+        <!-- タイマー表示 -->
+        <div class="ring-wrapper">
+            <svg class="ring-svg" viewBox="0 0 240 240">
+                <circle class="ring-bg" cx="120" cy="120" r="105" />
+                <circle id="ringProgress" class="ring-progress" cx="120" cy="120" r="105" />
+            </svg>
+            <div class="timer-center">
+                <div id="count" class="timer-text">25:00</div>
+                <div id="cycleText" class="cycle-text">1 / 4 サイクル</div>
+            </div>
+        </div>
+
+        <!-- 時間微調整 -->
+        <div class="adjust-controls">
+            <button class="btn-adjust" onclick="adjustTime(-300)">-5分</button>
+            <button class="btn-adjust" onclick="adjustTime(-60)">-1分</button>
+            <button class="btn-adjust" onclick="adjustTime(60)">+1分</button>
+            <button class="btn-adjust" onclick="adjustTime(300)">+5分</button>
+        </div>
+
+        <!-- 操作ボタン -->
+        <div class="controls">
+            <button id="startBtn" class="btn btn-primary" onclick="toggleTimer()">スタート</button>
+            <button class="btn btn-secondary" onclick="resetTimer()">リセット</button>
+            <button class="btn btn-secondary" onclick="skipSession()" title="スキップ">⏭</button>
+        </div>
+
+        <!-- エクストラセクション -->
+        <div class="rpg-extra-section">
+            <div id="battleLog" class="battle-log">⚔️ モンスターが現れた！タイマーを開始して攻撃しよう！</div>
+
+            <div class="rpg-actions">
+                <button class="btn-action-sub" onclick="togglePanel('shopPanel')">🛒 ショップ</button>
+                <div class="sound-selector">
+                    <label for="bgmSelect" style="font-size:0.75rem; color:var(--text-sub);">🎧 BGM:</label>
+                    <select id="bgmSelect" onchange="changeBGM(this.value)">
+                        <option value="none">オフ</option>
+                        <option value="rain">雨の音</option>
+                        <option value="white">ホワイトノイズ</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- 設定パネル -->
+        <div id="settingsPanel" class="panel-modal">
+            <div>
+                <div class="panel-title">
+                    <span>設定 ⚙️</span>
+                    <button class="icon-btn" onclick="togglePanel('settingsPanel')">&times;</button>
+                </div>
+                <div class="setting-item">
+                    <label for="cfgWork">作業時間（分）</label>
+                    <input type="number" id="cfgWork" value="25" min="1" max="120">
+                </div>
+                <div class="setting-item">
+                    <label for="cfgShort">短休憩時間（分）</label>
+                    <input type="number" id="cfgShort" value="5" min="1" max="60">
+                </div>
+                <div class="setting-item">
+                    <label for="cfgLong">長休憩時間（分）</label>
+                    <input type="number" id="cfgLong" value="15" min="1" max="60">
+                </div>
+                <div class="setting-item">
+                    <label for="cfgTarget">長休憩までの目標サイクル</label>
+                    <input type="number" id="cfgTarget" value="4" min="1" max="10">
+                </div>
+                <div class="setting-item">
+                    <label for="cfgAuto">自動で次のセッションへ</label>
+
+                    <input type="checkbox" id="cfgAuto" checked>
+                </div>
+                <div class="setting-item">
+                    <label for="cfgSound">効果音を鳴らす</label>
+                    <input type="checkbox" id="cfgSound" checked>
+                </div>
+            </div>
+            <div>
+                <button class="btn btn-primary" onclick="saveSettings()" style="width:100%; margin-bottom:8px;">保存して適用</button>
+                <button class="btn btn-secondary" onclick="resetGameData()" style="width:100%; color:#ef4444;">データを初期化</button>
+            </div>
+        </div>
+
+        <!-- ショップパネル -->
+        <div id="shopPanel" class="panel-modal">
+            <div>
+                <div class="panel-title">
+                    <span>道具屋 🛒</span>
+                    <button class="icon-btn" onclick="togglePanel('shopPanel')">&times;</button>
+                </div>
+                <div class="item-list">
+                    <div class="shop-item">
+                        <div class="item-info">
+                            <div>🧪 集中ポーション</div>
+                            <div>次の獲得EXPが 1.5倍！</div>
+                        </div>
+                        <button class="btn-action-sub" onclick="buyBuff('potion', 50)">50G</button>
+                    </div>
+                    <div class="shop-item">
+                        <div class="item-info">
+                            <div>👑 黄金のお守り</div>
+                            <div>次の獲得GOLDが 2倍！</div>
+                        </div>
+                        <button class="btn-action-sub" onclick="buyBuff('amulet', 80)">80G</button>
+                    </div>
+                    <div class="shop-item">
+                        <div class="item-info">
+                            <div>🎨 スキン: 炎のテーマ</div>
+                            <div>タイマーを情熱的な赤に</div>
+                        </div>
+                        <button id="btn-theme-fire" class="btn-action-sub" onclick="buyTheme('fire', 150)">150G</button>
+                    </div>
+                    <div class="shop-item">
+                        <div class="item-info">
+                            <div>🎨 スキン: 深緑の森</div>
+                            <div>タイマーを心安らぐ緑に</div>
+                        </div>
+                        <button id="btn-theme-forest" class="btn-action-sub" onclick="buyTheme('forest', 150)">150G</button>
+                    </div>
+                    <div class="shop-item">
+                        <div class="item-info">
+                            <div>🎨 スキン: ダークモード</div>
+                            <div>目に優しいダークカラー</div>
+                        </div>
+                        <button id="btn-theme-dark" class="btn-action-sub" onclick="buyTheme('dark', 200)">200G</button>
+                    </div>
+                </div>
+            </div>
+            <button class="btn btn-secondary" onclick="togglePanel('shopPanel')" style="width:100%;">閉じる</button>
+        </div>
+
+        <!-- 実績パネル -->
+        <div id="trophyPanel" class="panel-modal">
+            <div>
+                <div class="panel-title">
+                    <span>実績・トロフィー 🏆</span>
+                    <button class="icon-btn" onclick="togglePanel('trophyPanel')">&times;</button>
+                </div>
+                <div id="achievementList" class="item-list">
+                    <!-- JSで動的生成 -->
+                </div>
+            </div>
+            <button class="btn btn-secondary" onclick="togglePanel('trophyPanel')" style="width:100%;">閉じる</button>
+        </div>
+    </div>
+
+    <script>
+        const CIRCUMFERENCE = 2 * Math.PI * 105;
+
+        // 初期設定・ゲームデータ
+        let settings = {
+            work: 25, shortBreak: 5, longBreak: 15, targetCycles: 4, autoNext: true, sound: true
+        };
+
+        let gameState = {
+            heroLevel: 1, currentExp: 0, maxExp: 100, gold: 0, streak: 0, completedTotal: 0,
+            unlockedThemes: [], currentTheme: '', achievements: {}
+        };
+
+        const ACHIEVEMENTS = [
+            { id: 'first_win', name: '初陣の勝利', desc: '作業を1回完了する', reward: 30 },
+            { id: 'streak_5', name: '不屈の精神', desc: '5連勝を達成する', reward: 100 },
+            { id: 'dungeon_clear', name: 'ダンジョン踏破', desc: '1セット（4サイクル）をクリアする', reward: 150 },
+            { id: 'rich', name: '大富豪', desc: '所持金が 500G に達する', reward: 200 }
+        ];
+
+        const MODE_COLORS = { work: '#3b82f6', shortBreak: '#10b981', longBreak: '#8b5cf6' };
+        const MODE_NAMES = { work: '作業', shortBreak: '短休憩', longBreak: '長休憩' };
+        const TITLES = ["見習い冒険者", "見習い魔法使い", "集中ナイト", "知識の探求者", "大魔導士", "伝説の英雄"];
+        const MONSTERS = ["サボリゴブリン", "居眠りドラキー", "スマホ魔人", "集中ブレイカー"];
+        const BOSSES = ["〆切大魔王", " procrastination King"];
+
+        let currentMode = 'work';
+        let totalSeconds = settings.work * 60;
+        let remainingSeconds = totalSeconds;
+        let timerId = null;
+        let isRunning = false;
+        let completedCycles = 0;
+        let activeBuff = null;
+        let currentMonster = { name: '', maxHp: 100, isBoss: false };
+
+        // DOM要素
+        const countEl = document.getElementById('count');
+        const startBtn = document.getElementById('startBtn');
+        const progressEl = document.getElementById('ringProgress');
+        const statusBadge = document.getElementById('statusBadge');
+        const cycleText = document.getElementById('cycleText');
+        const streakBadge = document.getElementById('streakBadge');
+        const goldBadge = document.getElementById('goldBadge');
+        const heroTitle = document.getElementById('heroTitle');
+        const dungeonFloor = document.getElementById('dungeonFloor');
+        const expFill = document.getElementById('expFill');
+        const battleLog = document.getElementById('battleLog');
+        const enemyHpContainer = document.getElementById('enemyHpContainer');
+        const enemyName = document.getElementById('enemyName');
+        const enemyHpText = document.getElementById('enemyHpText');
+        const hpFill = document.getElementById('hpFill');
+
+        // セーブ・ロード
+        function saveData() {
+            localStorage.setItem('pomodoro_rpg_settings', JSON.stringify(settings));
+            localStorage.setItem('pomodoro_rpg_state', JSON.stringify(gameState));
+        }
+
+        function loadData() {
+            const savedSettings = localStorage.getItem('pomodoro_rpg_settings');
+            const savedState = localStorage.getItem('pomodoro_rpg_state');
+            if (savedSettings) settings = { ...settings, ...JSON.parse(savedSettings) };
+            if (savedState) gameState = { ...gameState, ...JSON.parse(savedState) };
+
+            document.getElementById('cfgWork').value = settings.work;
+            document.getElementById('cfgShort').value = settings.shortBreak;
+            document.getElementById('cfgLong').value = settings.longBreak;
+            document.getElementById('cfgTarget').value = settings.targetCycles;
+            document.getElementById('cfgAuto').checked = settings.autoNext;
+            document.getElementById('cfgSound').checked = settings.sound;
+
+            if (gameState.currentTheme) applyTheme(gameState.currentTheme);
+            updateUI();
+        }
+
+        function updateUI() {
+            streakBadge.textContent = `🔥 ${gameState.streak}`;
+            goldBadge.textContent = `💰 ${gameState.gold}G`;
+            const titleIdx = Math.min(gameState.heroLevel - 1, TITLES.length - 1);
+            heroTitle.textContent = `⚔️ Lv.${gameState.heroLevel} ${TITLES[titleIdx]}`;
+            expFill.style.width = `${(gameState.currentExp / gameState.maxExp) * 100}%`;
+            renderAchievements();
+        }
+
+        function updateDisplay() {
+            const mins = Math.floor(remainingSeconds / 60).toString().padStart(2, '0');
+            const secs = (remainingSeconds % 60).toString().padStart(2, '0');
+            countEl.textContent = `${mins}:${secs}`;
+            document.title = `${mins}:${secs} - ${MODE_NAMES[currentMode]}`;
+
+            const fraction = totalSeconds > 0 ? (remainingSeconds / totalSeconds) : 0;
+            progressEl.style.strokeDashoffset = CIRCUMFERENCE * (1 - fraction);
+
+            if (currentMode === 'work') {
+                const currentHp = Math.ceil(fraction * currentMonster.maxHp);
+                enemyHpText.textContent = `${currentHp}/${currentMonster.maxHp}`;
+                hpFill.style.width = `${fraction * 100}%`;
+            }
+        }
+
+        function updateCycleText() {
+            cycleText.textContent = `${completedCycles + 1} / ${settings.targetCycles} サイクル`;
+            dungeonFloor.textContent = `🏰 集中ダンジョン ${completedCycles + 1}F`;
+        }
+
+        function switchMode(mode, autoStart = false) {
+            pauseTimer();
+            currentMode = mode;
+            totalSeconds = settings[mode] * 60;
+            remainingSeconds = totalSeconds;
+
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.getElementById(`tab-${mode === 'shortBreak' ? 'short' : mode === 'longBreak' ? 'long' : 'work'}`).classList.add('active');
+
+            statusBadge.textContent = MODE_NAMES[mode];
+            progressEl.style.stroke = MODE_COLORS[mode];
+
+            if (mode === 'work') {
+                enemyHpContainer.style.display = 'block';
+                const isBoss = (completedCycles + 1) === settings.targetCycles;
+                const mobList = isBoss ? BOSSES : MONSTERS;
+                const mobName = mobList[Math.floor(Math.random() * mobList.length)];
+                currentMonster = { name: mobName, maxHp: isBoss ? 200 : 100, isBoss };
+                enemyName.textContent = isBoss ? `⚠️ BOSS: ${mobName}` : `👾 ${mobName}`;
+                battleLog.textContent = isBoss ? `👿 ボス「${mobName}」が現れた！集中攻撃で撃破せよ！` : `⚔️ ${mobName} が現れた！倒すために全集中！`;
+            } else {
+                enemyHpContainer.style.display = 'none';
+                battleLog.textContent = `☕ 休憩タイム。体力をしっかり回復しよう！`;
+            }
+
+            updateDisplay();
+            if (autoStart) startTimer();
+        }
+
+        function toggleTimer() {
+            if (isRunning) pauseTimer();
+            else startTimer();
+        }
+
+        function startTimer() {
+            if (remainingSeconds <= 0) return;
+            isRunning = true;
+            startBtn.textContent = '一時停止';
+            startBtn.classList.add('running');
+            playSound(880, 0.1);
+
+            timerId = setInterval(() => {
+                remainingSeconds--;
+                updateDisplay();
+
+                if (remainingSeconds <= 0) {
+                    clearInterval(timerId);
+                    isRunning = false;
+                    startBtn.textContent = 'スタート';
+                    startBtn.classList.remove('running');
+                    playSound(523.25, 0.8);
+                    handleSessionComplete();
+                }
+            }, 1000);
+        }
+
+        function pauseTimer() {
+            clearInterval(timerId);
+            isRunning = false;
+            startBtn.textContent = 'スタート';
+            startBtn.classList.remove('running');
+        }
+
+        function resetTimer() {
+            pauseTimer();
+            remainingSeconds = totalSeconds;
+            updateDisplay();
+        }
+
+        function skipSession() {
+            pauseTimer();
+            handleSessionComplete();
+        }
+
+        function handleSessionComplete() {
+            if (currentMode === 'work') {
+                completedCycles++;
+                gameState.streak++;
+                gameState.completedTotal++;
+
+                let gainedExp = currentMonster.isBoss ? 120 : 50;
+                let gainedGold = currentMonster.isBoss ? 80 : 30;
+
+                if (activeBuff === 'potion') gainedExp = Math.floor(gainedExp * 1.5);
+                if (activeBuff === 'amulet') gainedGold *= 2;
+                activeBuff = null;
+
+                addExp(gainedExp);
+                gameState.gold += gainedGold;
+
+                battleLog.textContent = `🎉 ${currentMonster.name} を討伐！ (+${gainedExp}EXP, +${gainedGold}G)`;
+
+                checkAchievements();
+
+                if (completedCycles >= settings.targetCycles) {
+                    completedCycles = 0;
+                    battleLog.textContent = `👑 ダンジョンクリア！大ボス撃破の栄誉と長休憩を獲得！`;
+                    switchMode('longBreak', settings.autoNext);
+                } else {
+                    switchMode('shortBreak', settings.autoNext);
+                }
+            } else {
+                switchMode('work', settings.autoNext);
+            }
+            updateCycleText();
+            updateUI();
+            saveData();
+        }
+
+        function addExp(amount) {
+            gameState.currentExp += amount;
+            if (gameState.currentExp >= gameState.maxExp) {
+                gameState.currentExp -= gameState.maxExp;
+                gameState.heroLevel++;
+                gameState.maxExp = Math.floor(gameState.maxExp * 1.25);
+                playSound(1046.50, 0.5);
+            }
+        }
+
+        // ショップ機能
+        function buyBuff(item, price) {
+            if (gameState.gold >= price) {
+                gameState.gold -= price;
+                activeBuff = item;
+                battleLog.textContent = `🧪 アイテムを準備！次のセッションで効果発動！`;
+                togglePanel('shopPanel');
+                updateUI();
+                saveData();
+            } else {
+                alert("ゴールドが足りません！");
+            }
+        }
+
+        function buyTheme(theme, price) {
+            if (gameState.unlockedThemes.includes(theme)) {
+                applyTheme(theme);
+                return;
+            }
+            if (gameState.gold >= price) {
+                gameState.gold -= price;
+                gameState.unlockedThemes.push(theme);
+                applyTheme(theme);
+                updateUI();
+                saveData();
+            } else {
+                alert("ゴールドが足りません！");
+            }
+        }
+
+        function applyTheme(theme) {
+            document.body.className = theme ? `theme-${theme}` : '';
+            gameState.currentTheme = theme;
+            const btn = document.getElementById(`btn-theme-${theme}`);
+            if (btn) btn.textContent = "適用中";
+            saveData();
+        }
+
+        // 実績チェック
+        function checkAchievements() {
+            ACHIEVEMENTS.forEach(ach => {
+                if (!gameState.achievements[ach.id]) {
+                    let unlock = false;
+                    if (ach.id === 'first_win' && gameState.completedTotal >= 1) unlock = true;
+                    if (ach.id === 'streak_5' && gameState.streak >= 5) unlock = true;
+                    if (ach.id === 'dungeon_clear' && completedCycles === 0) unlock = true;
+                    if (ach.id === 'rich' && gameState.gold >= 500) unlock = true;
+
+                    if (unlock) {
+                        gameState.achievements[ach.id] = true;
+                        gameState.gold += ach.reward;
+                        alert(`🏆 実績解除: 【${ach.name}】\n報酬: +${ach.reward}G`);
+                    }
+                }
+            });
+        }
+
+        function renderAchievements() {
+            const list = document.getElementById('achievementList');
+            list.innerHTML = ACHIEVEMENTS.map(ach => {
+                const isUnlocked = gameState.achievements[ach.id];
+                return `
+                    <div class="achievement-item" style="opacity: ${isUnlocked ? 1 : 0.5}">
+                        <div class="item-info">
+                            <div>${isUnlocked ? '🏆' : '🔒'} ${ach.name}</div>
+                            <div>${ach.desc} (+${ach.reward}G)</div>
+                        </div>
+                        <span style="font-size:0.75rem; font-weight:700; color:${isUnlocked ? '#10b981' : '#64748b'}">
+                            ${isUnlocked ? '達成！' : '未達成'}
+                        </span>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function adjustTime(seconds) {
+            remainingSeconds = Math.max(0, remainingSeconds + seconds);
+            totalSeconds = remainingSeconds;
+            updateDisplay();
+        }
+
+        function togglePanel(panelId) {
+            const panel = document.getElementById(panelId);
+            panel.classList.toggle('active');
+        }
+
+        function saveSettings() {
+            settings.work = parseInt(document.getElementById('cfgWork').value) || 25;
+            settings.shortBreak = parseInt(document.getElementById('cfgShort').value) || 5;
+            settings.longBreak = parseInt(document.getElementById('cfgLong').value) || 15;
+            settings.targetCycles = parseInt(document.getElementById('cfgTarget').value) || 4;
+            settings.autoNext = document.getElementById('cfgAuto').checked;
+            settings.sound = document.getElementById('cfgSound').checked;
+
+            togglePanel('settingsPanel');
+            updateCycleText();
+            switchMode(currentMode);
+            saveData();
+        }
+
+        function resetGameData() {
+            if (confirm("全てのデータを初期化しますか？この操作は取り消せません。")) {
+                localStorage.clear();
+                location.reload();
+            }
+        }
+
+        function playSound(freq, duration) {
+            if (!settings.sound) return;
+            try {
+                const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.frequency.setValueAtTime(freq, ctx.currentTime);
+                gain.gain.setValueAtTime(0.1, ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
+                osc.start();
+                osc.stop(ctx.currentTime + duration);
+            } catch(e) {}
+        }
+
+        // BGM生成
+        let bgmSource = null, audioCtx = null;
+        function changeBGM(type) {
+            if (bgmSource) { bgmSource.stop(); bgmSource = null; }
+            if (type === 'none') return;
+            try {
+                audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+                const bufferSize = audioCtx.sampleRate * 2;
+                const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+                const output = buffer.getChannelData(0);
+                for (let i = 0; i < bufferSize; i++) output[i] = Math.random() * 2 - 1;
+
+                bgmSource = audioCtx.createBufferSource();
+                bgmSource.buffer = buffer;
+                bgmSource.loop = true;
+
+                const filter = audioCtx.createBiquadFilter();
+                filter.type = type === 'rain' ? 'lowpass' : 'bandpass';
+                filter.frequency.value = type === 'rain' ? 800 : 1000;
+
+                const gain = audioCtx.createGain();
+                gain.gain.value = 0.03;
+
+                bgmSource.connect(filter);
+                filter.connect(gain);
+                gain.connect(audioCtx.destination);
+                bgmSource.start();
+            } catch(e) {}
+        }
+
+        // 初期化実行
+        loadData();
+        switchMode('work');
+        updateCycleText();
+    </script>
+</body>
+</html>
